@@ -1,699 +1,43 @@
-# RUZGARTOKENIZER
-### Turkish-Focused 256K ByteLevel BPE Tokenizer
-**Created and developed by Rüzgar Vatansever**
+# RuzgarTokenizer
+### A 256K Turkish-Focused Tokenization & Morphological Research Framework
 
-[🇹🇷 Türkçe](#-türkçe) · [🇬🇧 English](#-english)
+**Developed by Rüzgar Vatansever**
+
+[Hugging Face Model Repository](https://huggingface.co/brun12/RuzgarTokenizer)
 
 Download: https://huggingface.co/brun12/RuzgarTokenizer/tree/main
 
 ---
 
-# 🇹🇷 TÜRKÇE
+# TÜRKÇE DOKÜMANTASYON
 
 ## 1. Proje Hakkında
 
-**RuzgarTokenizer**, Türkçenin dilbilimsel özellikleri ve eklemeli morfolojik yapısı dikkate alınarak geliştirilmiş, 256.000 tokenlık vocabulary kapasitesine sahip deneysel bir tokenizer projesidir.
+**RuzgarTokenizer**, Türkçe metinlerde token verimliliğini, alt birim dağılımını ve morfolojik yapıyı incelemek amacıyla geliştirilen, 256.000 tokenlık hedef söz dağarcığına sahip bir ByteLevel BPE tokenizer projesidir.
 
-Projenin geliştiricisi **Rüzgar Vatansever**'dir.
+Projenin temel hedefi yalnızca bir tokenizer eğitmek değildir. Aynı zamanda büyük ölçekli metin koleksiyonlarını işleyebilen, Türkçeye özel ön işleme yöntemlerini değerlendirebilen, morfolojik analizleri farklı yaklaşımlarla karşılaştırabilen ve sonuçlarını ölçülebilir benchmark verileriyle raporlayabilen modüler bir araştırma altyapısı oluşturmaktır.
 
-RuzgarTokenizer'ın temel amacı Türkçe metinleri daha verimli temsil etmek, gereksiz token parçalanmasını azaltmak, geniş bir Türkçe vocabulary oluşturmak ve büyük dil modellerinde kullanılabilecek bir tokenizasyon altyapısı geliştirmektir.
+RuzgarTokenizer'ın geliştirilmesinde NEDO ve Morpheus gibi tokenizer projeleri karşılaştırmalı referanslar olarak değerlendirilmiştir. Bunun yanında OpenAI'nin kamuya açık tokenization encodings, Qwen ve DeepSeek gibi sistemlerin tokenizasyon sonuçları da performans karşılaştırmalarında incelenmiştir.
 
-Proje yalnızca bir tokenizer eğitimi olarak tasarlanmamıştır. Veri toplama, veri doğrulama, Türkçe normalizasyon, morfolojik analiz, morfem keşfi, vocabulary oluşturma, BPE eğitimi, round-trip testleri ve karşılaştırmalı benchmark aşamalarını içeren kapsamlı bir NLP geliştirme pipeline'ına sahiptir.
+Proje, Türkçenin eklemeli dil yapısını, kelime türetme ve çekim süreçlerini, uzun kelime biçimlerini ve karakter dağılımlarını dikkate alan bir geliştirme yaklaşımı benimser.
 
 ### Temel özellikler
 
-- 256.000 hedef vocabulary.
-- ByteLevel BPE tokenizasyon algoritması.
-- Rust tabanlı Hugging Face Tokenizers motoru.
-- Türkçe odaklı özel pre-tokenization.
-- Zeyrek ile Türkçe morfolojik çözümleme.
-- Morfessor ile denetimsiz morfem öğrenimi.
-- Özel Türkçe ek envanteri.
-- Morfolojik analiz ve BPE sınır hizalama değerlendirmesi.
-- Büyük ölçekli Parquet veri işleme.
-- Paralel CPU ve Rust/Rayon tabanlı işlem altyapısı.
-- Round-trip ve tokenizer tutarlılık testleri.
-- NEDO, Morpheus ve diğer tokenizer sistemleriyle karşılaştırma hedefi.
-
----
-
-## 2. Tokenizer Mimarisi
-
-### 2.1 ByteLevel BPE
-
-RuzgarTokenizer'ın temel tokenizasyon algoritması **ByteLevel Byte Pair Encoding (BPE)** yaklaşımıdır.
-
-BPE, metin içerisindeki sık karşılaşılan karakter dizilerini ve alt kelime parçalarını öğrenerek bunları vocabulary içerisinde temsil eder.
-
-Eğitim sürecinde sık kullanılan parçaların birleştirilmesiyle daha büyük token birimleri oluşturulur.
-
-ByteLevel yaklaşımı, metnin byte seviyesindeki temsilini temel alarak farklı karakterlerin ve yazım biçimlerinin işlenmesini sağlar.
-
-Bu yaklaşımın tercih edilme nedenleri:
-
-- Türkçe karakterlerin byte düzeyinde temsil edilebilmesi.
-- Bilinmeyen karakter dizileriyle başa çıkabilen bir yapı.
-- Alt kelime seviyesinde esnek tokenizasyon.
-- Büyük vocabulary ile sık kullanılan parçaların daha verimli temsil edilmesi.
-- Modern NLP altyapılarıyla uyumluluk.
-
-RuzgarTokenizer'ın gerçek algoritması Unigram değil, **ByteLevel BPE**'dir.
-
-### 2.2 Özel Türkçe Pre-tokenizer
-
-Standart pre-tokenization yaklaşımları her dilin yazım ve kelime yapısına aynı şekilde yaklaşır.
-
-Türkçede ise eklemeli yapı, kesme işaretleri, özel isimler ve Türkçeye özgü karakterler tokenizasyon açısından önemlidir.
-
-Bu nedenle projede `turkish_split` isimli özel bir pre-tokenization modu geliştirilmiştir.
-
-Bu mod, kelime sınırları ve Türkçe yazım özellikleri üzerinde daha kontrollü bir başlangıç bölümlendirmesi sağlamayı amaçlar.
-
-Ayrıca yapılandırmada GPT-2 regex tabanlı pre-tokenization seçeneği de bulunmaktadır.
-
-### 2.3 Vocabulary sistemi
-
-RuzgarTokenizer'ın hedef vocabulary büyüklüğü:
-
-**256.000 token**
-
-Yapılandırılabilir eğitim parametreleri:
-
-| Parametre | Değer |
-|---|---:|
-| Vocabulary size | 256.000 |
-| Minimum token frequency | 2 |
-| Special tokens | 2 |
-| Special tokens | `<|endoftext|>`, `<|pad|>` |
-| Pretokenizer | Turkish Split |
-| Alternative pretokenizer | GPT-2 Regex |
-| Maximum token length | Configurable |
-
-Gerçek vocabulary büyüklüğü, eğitim sonrasında tokenizer dosyasından doğrulanır. Hedef vocabulary ile gerçekleşen vocabulary büyüklüğü birbirinden ayrı değerlendirilir.
-
----
-
-## 3. Türkçe Morfoloji Sistemi
-
-Türkçe eklemeli bir dildir. Kelimeler köklerine çok sayıda yapım ve çekim eki alabilir.
-
-Örneğin:
-
-`ev → evler → evlerimiz → evlerimizden → evlerimizdekiler`
-
-Bu yapı, Türkçe tokenizer geliştirmeyi genel amaçlı İngilizce odaklı tokenizasyon yaklaşımlarından farklılaştırır.
-
-RuzgarTokenizer'ın geliştirme pipeline'ında morfoloji araştırması ayrı bir modül olarak tasarlanmıştır.
-
-### 3.1 Zeyrek — Morphological Analysis
-
-**Zeyrek**, Türkçe kelimeleri morfolojik olarak çözümlemek için kullanılan analiz aracıdır.
-
-Projedeki görevi:
-
-- Kelime köklerini incelemek.
-- Kelimelerin olası morfolojik analizlerini elde etmek.
-- Ek ve dilbilgisel özellikleri değerlendirmek.
-- Bir kelimenin birden fazla olası analizini incelemek.
-- Sözcük türü (POS) dağılımlarını çıkarmak.
-- Lemma frekanslarını değerlendirmek.
-
-Zeyrek çıktıları ham analizleri ve özet istatistikleriyle birlikte saklanır.
-
-Önemli ayrım: Zeyrek bir tokenizer değildir. RuzgarTokenizer'ın morfoloji araştırma pipeline'ında kullanılan bir morfolojik analiz aracıdır.
-
-### 3.2 Morfessor — Unsupervised Morpheme Discovery
-
-**Morfessor**, kelimelerin morfem adı verilen daha küçük anlamlı birimlere ayrılmasını öğrenmek için kullanılan denetimsiz morfem modelleme aracıdır.
-
-Projede Morfessor şu amaçlarla kullanılır:
-
-- Kelimelerin olası morfem sınırlarını öğrenmek.
-- Sık karşılaşılan morfemleri belirlemek.
-- Kelime türü ve kullanım sıklığına göre morfem istatistikleri çıkarmak.
-- Kelime segmentasyonlarını değerlendirmek.
-- Morfolojik yapılar hakkında ek veri oluşturmak.
-
-Morfessor modeli eğitim sonrasında kaydedilir ve yeniden yüklenerek doğrulanır.
-
-### 3.3 Özel Türkçe ek envanteri
-
-Proje içerisinde Türkçe ekleri tanımlamak ve analiz etmek için özel bir suffix inventory oluşturulmuştur.
-
-Bu envanterde ekler kategorilere ayrılır:
-
-- Çekim ekleri.
-- İsimden isim türeten ekler.
-- Fiilden fiil türeten ekler.
-- İsimden fiil türeten ekler.
-- Fiilden isim türeten ekler.
-- Zarf-fiil yapıları.
-- Sıfat-fiil yapıları.
-- Mastar ve eylemlik yapıları.
-
-Eklerin yüzey biçimleri Türkçedeki ünlü uyumu, ünsüz değişimi ve kaynaştırma sesleri dikkate alınarak oluşturulabilir.
-
-Örneğin:
-
-- `-lar / -ler`
-- `-cı / -ci / -cu / -cü`
-- `-lık / -lik / -luk / -lük`
-- `-dan / -den / -tan / -ten`
-
-Bu sistem, Türkçenin morfolojik özelliklerini daha ayrıntılı incelemek için kullanılır.
-
-### 3.4 Birleşik morfoloji analizi
-
-RuzgarTokenizer pipeline'ında Zeyrek ve Morfessor çıktıları birleştirilerek karşılaştırmalı bir morfoloji veri seti oluşturulur.
-
-Bu sistem:
-
-- Zeyrek analizlerini,
-- Morfessor segmentasyonlarını,
-- Kelime frekanslarını,
-- Özel suffix inventory sonuçlarını,
-- Heuristic suffix analizlerini
-
-aynı kayıt üzerinde değerlendirebilir.
-
-Ayrıca farklı analizlerin birbiriyle ne ölçüde örtüştüğü incelenir.
-
-### 3.5 BPE ve morfoloji hizalama
-
-Önemli araştırma bileşenlerinden biri BPE token sınırları ile Morfessor tarafından belirlenen morfem sınırlarının karşılaştırılmasıdır.
-
-Bu analizde:
-
-- BPE sınır precision değeri,
-- Morfessor sınır recall değeri,
-- F1 skoru
-
-hesaplanabilir.
-
-Bu ölçüm, tokenizer'ın dilbilimsel morfem sınırlarıyla ne ölçüde örtüştüğünü değerlendirmeye yardımcı olur.
-
-Bu analiz bir araştırma ve değerlendirme aşamasıdır; tokenizer'ın her encoding çağrısında Zeyrek veya Morfessor çalıştırdığı anlamına gelmez.
-
----
-
-## 4. Veri Altyapısı ve Dataset Pipeline
-
-RuzgarTokenizer büyük ölçekli Türkçe veri üzerinde çalışacak şekilde hazırlanmıştır.
-
-### Kullanılan veri kaynakları
-
-| Veri kümesi | Kullanım amacı |
-|---|---|
-| FineWeb-2 Turkish | Geniş kapsamlı Türkçe web metinleri |
-| Turkish Corpus 100B | Büyük ölçekli Türkçe metin dağılımı |
-| Umarigan Turkish Corpus | Ek Türkçe corpus çeşitliliği |
-
-Kaynakların pipeline içerisindeki ağırlıkları:
-
-| Kaynak | Ağırlık |
-|---|---:|
-| FineWeb-2 Turkish | %40 |
-| Turkish Corpus 100B | %40 |
-| Umarigan Turkish Corpus | %20 |
-
-Bu oranlar kaynakların yapılandırılmış seçim ağırlıklarıdır; nihai eğitim verisinin her zaman birebir aynı oranlarda oluştuğu anlamına gelmez.
-
-### 4.1 Hugging Face Hub
-
-Hugging Face Hub, veri kümelerinin ve ilgili dosyaların keşfedilmesi ve indirilmesi için kullanılır.
-
-Pipeline, dataset dosyalarını belirlenen kaynak ve dosya desenlerine göre seçer.
-
-### 4.2 PyArrow ve Parquet
-
-Veri işleme altyapısının önemli parçalarından biri PyArrow'dur.
-
-PyArrow sayesinde:
-
-- Parquet metadata bilgileri okunur.
-- Dosya şemaları kontrol edilir.
-- Metin sütunları tespit edilir.
-- Row-group ve batch bazlı veri okuma yapılır.
-- Büyük dosyalar tek seferde belleğe yüklenmeden işlenebilir.
-
-Bu yaklaşım yüzlerce gigabyte büyüklüğündeki veri kümeleriyle çalışmayı kolaylaştırır.
-
-### 4.3 Veri doğrulama
-
-Pipeline içerisinde:
-
-- Dosya bütünlüğü kontrolü.
-- Parquet şema doğrulaması.
-- Metin sütunu tespiti.
-- Dil etiketi kontrolü.
-- Bozuk dosyaları atlama.
-- İndirme tekrar denemeleri.
-- İndirme ve doğrulama raporları
-
-bulunur.
-
-### 4.4 Streaming ve batch processing
-
-Belgeler akış halinde okunur ve yapılandırılmış batch grupları halinde işlenir.
-
-Bu sistem, büyük veri kümelerinin tamamını aynı anda RAM'e yüklemek yerine kontrollü şekilde işlenmesine yardımcı olur.
-
-### 4.5 Deduplication
-
-Pipeline'da isteğe bağlı Bloom Filter tabanlı duplicate kontrolü bulunur.
-
-Bu mekanizma birebir aynı metinlerin tekrarını tespit etmek için kullanılabilir.
-
-Bloom Filter olasılıksal bir veri yapısıdır. Yakın kopyaları veya anlamca benzer metinleri tek başına tespit etmez.
-
-### 4.6 Holdout sampling
-
-Benchmark ve doğrulama için eğitim akışından ayrı tutulabilecek holdout örnekleme sistemi bulunur.
-
-Böylece tokenizer'ın eğitim sırasında görmediği metinlerde de test edilmesi mümkün olur.
-
----
-
-## 5. Eğitim Mimarisi ve Teknolojiler
-
-RuzgarTokenizer'ın geliştirme sistemi farklı teknolojileri bir araya getirir.
-
-| Teknoloji | Projedeki görevi |
-|---|---|
-| Hugging Face Hub | Dataset ve model dosyalarının yönetimi |
-| Hugging Face Tokenizers | Tokenizer algoritması ve eğitimi |
-| Rust / Rayon | Tokenizer motorunun paralel CPU işlemesi |
-| ByteLevel BPE | Ana tokenizasyon algoritması |
-| PyArrow | Parquet veri okuma ve işleme |
-| Zeyrek | Türkçe morfolojik analiz |
-| Morfessor | Denetimsiz morfem öğrenimi |
-| Python | Pipeline yönetimi ve analiz |
-| SQLite | Morfoloji verisi indeksleme ve sorgulama |
-| JSON / JSONL | Yapılandırılmış sonuçların saklanması |
-| Multiprocessing | Paralel analiz işçileri |
-| ThreadPoolExecutor | Paralel görev ve dosya işlemleri |
-| psutil | RAM, CPU ve disk takibi |
-| hashlib | Dosya ve veri imzaları |
-| Bloom Filter | İsteğe bağlı duplicate kontrolü |
-| Marimo | Notebook tabanlı çalışma ortamı |
-
-### 5.1 Rust tabanlı Tokenizers motoru
-
-Hugging Face Tokenizers kütüphanesi Rust tabanlıdır.
-
-Bu sayede tokenizer eğitimi ve encoding işlemleri optimize edilmiş bir native motor üzerinden yürütülebilir.
-
-Rayon, CPU paralelliğinin yönetilmesinde kullanılır.
-
-### 5.2 CPU ve GPU ayrımı
-
-Mevcut V13.1 eğitim kodunun çalışma biçimi:
-
-- ByteLevel BPE eğitimi CPU üzerinde yürütülür.
-- Tokenizer motoru Rust/Rayon tabanlıdır.
-- Zeyrek ve Morfessor kendi analiz süreçlerini yürütür.
-- GPU kullanımı mevcut kodda etkin değildir.
-
-Bu nedenle GPU donanımının sistemde bulunması ile tokenizer eğitiminin GPU üzerinde gerçekleştirilmesi birbirinden ayrı kavramlardır.
-
----
-
-## 6. Eğitim Verisi ve Donanım
-
-Proje için bildirilen toplam eğitim verisi:
-
-<details>
-<summary>Training configuration</summary>
-
-| Özellik | Değer |
-|---|---:|
-| Toplam veri | **304,92 GB** |
-| Yaklaşık süre | **1,5 gün** |
-| Hedef vocabulary | **256.000** |
-| RAM kapasitesi | **1 TB** |
-| Depolama kapasitesi | **10 TB** |
-| GPU donanımı | NVIDIA RTX 6000 PRO Blackwell |
-| BPE algoritması | ByteLevel BPE |
-| Minimum token frequency | 2 |
-
-</details>
-
-Bu değerler proje geliştirme süreci için bildirilen yapılandırmadır. Gerçek eğitim süresi ve donanım kullanımı çalıştırma logları ve sonuç dosyalarıyla doğrulanmalıdır.
-
-Özellikle mevcut V13.1 kodunda BPE eğitiminin CPU üzerinde çalıştığı ve `gpu_used` değerinin `false` olarak raporlandığı unutulmamalıdır.
-
----
-
-## 7. 12 Aşamalı Geliştirme Pipeline'ı
-
-Proje tek bir eğitim komutundan ibaret değildir. Modüllere ayrılmış bir geliştirme sistemine sahiptir.
-
-Genel akış:
-
-1. Paket kurulumu ve ortam kontrolü.
-2. Dataset kaynaklarının keşfi.
-3. Dosyaların indirilmesi.
-4. Parquet dosyalarının doğrulanması.
-5. Veri akışı ve belge hazırlama.
-6. Veri örnekleme ve istatistik toplama.
-7. Kelime havuzunun oluşturulması.
-8. Zeyrek morfolojik çözümleme.
-9. Morfessor eğitimi ve segmentasyon.
-10. Birleşik morfoloji analizi.
-11. ByteLevel BPE eğitimi ve benchmark.
-12. Sonuçların doğrulanması, README ve ZIP paketinin oluşturulması.
-
-Her modül kendi durumunu ve çalışma süresini raporlayabilir.
-
-### 7.1 Resumable pipeline
-
-Pipeline içerisinde daha önce tamamlanan bazı aşamaların yeniden kullanılmasını sağlayan imza ve cache sistemleri bulunur.
-
-Bu sayede aynı girdilerle tekrar çalıştırıldığında geçerli sonuçların yeniden hesaplanması önlenebilir.
-
-### 7.2 Atomic file operations
-
-Önemli çıktı dosyaları önce geçici dosyalara yazılır ve işlem başarılı olduğunda hedef dosyaya taşınır.
-
-Bu yaklaşım yarım kalmış çıktıların geçerli dosyaların üzerine yazılmasını önlemeye yardımcı olur.
-
-### 7.3 Logging ve monitoring
-
-Sistem:
-
-- CPU kullanımını,
-- RAM kullanımını,
-- Disk durumunu,
-- İşlem sürelerini,
-- Veri miktarını,
-- Modül durumlarını,
-- Hata kayıtlarını
-
-izleyebilir.
-
-Uzun süren BPE ve Morfessor işlemlerinde heartbeat sistemiyle çalışma durumunun düzenli olarak raporlanması da mümkündür.
-
----
-
-## 8. Benchmark Sistemi
-
-RuzgarTokenizer, token sayısı, hız, karakter verimliliği ve round-trip doğruluğu gibi farklı metriklerle değerlendirilebilir.
-
-### Benchmark metrikleri
-
-- Total token count.
-- Tokens per word.
-- Characters per token.
-- Bytes per token.
-- Tokens per 1,000 characters.
-- Documents per second.
-- Tokens per second.
-- Batch throughput.
-- Single-thread throughput.
-- Round-trip accuracy.
-- Word fertility.
-- Morphological boundary alignment.
-
-### 8.1 Karşılaştırma yaklaşımı
-
-Geliştirme sürecinde NEDO Tokenizer ve Morpheus tasarım ve karşılaştırma referansları olarak ele alınmıştır.
-
-Ek benchmark karşılaştırmalarında OpenAI'nin public encoding'leri, Qwen ve DeepSeek tokenizer'ları da değerlendirilmiştir.
-
-Açıkça belirtilmesi gereken nokta: OpenAI encoding'leri bütün ChatGPT modellerinin birebir tokenizer'ı değildir. Gemini ve Claude'un üretim tokenizer'ları da bu karşılaştırmada doğrudan ölçülmüş kabul edilmemelidir.
-
----
-
-## 9. Benchmark Sonuçları
-
-Aşağıdaki tablo, proje için sağlanan 200 MiB benchmark raporundaki sonuçları göstermektedir.
-
-| Sıralama | Tokenizer | Toplam token |
-|---:|---|---:|
-| 1 | **Ruzgar 256K** | **35.741.100** |
-| 2 | OpenAI o200k_base | 57.460.095 |
-| 3 | Qwen 2.5 | 66.276.713 |
-| 4 | OpenAI cl100k_base | 75.408.571 |
-| 5 | DeepSeek V3 | 79.031.654 |
-| 6 | NEDO 32K | 81.762.570 |
-
-### 9.1 NEDO karşılaştırması
-
-| Ölçüm | Sonuç |
-|---|---:|
-| NEDO token sayısı | 81.762.570 |
-| Ruzgar token sayısı | 35.741.100 |
-| Fark | 46.021.470 |
-| Token sayısındaki azalma | **%56,29** |
-
-Aynı test metinlerinde Ruzgar, NEDO'ya kıyasla %56,29 daha az token üretmiştir.
-
-### 9.2 Diğer sistemlerle karşılaştırma
-
-| Tokenizer | Ruzgar'ın daha az token üretme oranı |
-|---|---:|
-| NEDO 32K | %56,29 |
-| OpenAI o200k_base | %37,80 |
-| Qwen 2.5 | %46,08 |
-| OpenAI cl100k_base | %52,61 |
-| DeepSeek V3 | %54,77 |
-
-### 9.3 Token / Byte
-
-| Tokenizer | Tokens / Byte |
-|---|---:|
-| **Ruzgar 256K** | **0,1704** |
-| OpenAI o200k_base | 0,2740 |
-| Qwen 2.5 | 0,3160 |
-| OpenAI cl100k_base | 0,3596 |
-| DeepSeek V3 | 0,3769 |
-| NEDO 32K | 0,3899 |
-
-### 9.4 Token / 1000 kelime
-
-| Tokenizer | Tokens / 1000 words |
-|---|---:|
-| **Ruzgar 256K** | **1.452,18** |
-| OpenAI o200k_base | 2.334,64 |
-| Qwen 2.5 | 2.692,86 |
-| OpenAI cl100k_base | 3.063,89 |
-| DeepSeek V3 | 3.211,10 |
-| NEDO 32K | 3.322,06 |
-
-### 9.5 Tokenization throughput
-
-| Tokenizer | Tokens / second |
-|---|---:|
-| OpenAI cl100k_base | 4.291.790 |
-| OpenAI o200k_base | 4.079.031 |
-| DeepSeek V3 | 1.092.013 |
-| Qwen 2.5 | 897.627 |
-| NEDO 32K | 554.285 |
-| Ruzgar 256K | 466.251 |
-
-Ruzgar'ın ana avantajı bu testte en yüksek hız değil, daha düşük token üretimidir.
-
-### 9.6 Latency
-
-| Tokenizer | P50 | P95 | P99 |
-|---|---:|---:|---:|
-| Ruzgar | 0,662 ms | 4,634 ms | 11,256 ms |
-| NEDO | 1,266 ms | 9,160 ms | 22,525 ms |
-| OpenAI o200k | 0,120 ms | 0,768 ms | 1,780 ms |
-| OpenAI cl100k | 0,151 ms | 0,994 ms | 2,303 ms |
-| Qwen 2.5 | 0,653 ms | 4,447 ms | 10,422 ms |
-| DeepSeek V3 | 0,626 ms | 4,430 ms | 10,363 ms |
-
-### 9.7 Benchmark değerlendirmesi
-
-Bu sonuçlar, sağlanan benchmark raporundaki test metinleri ve tokenizer sürümleri için geçerlidir.
-
-Token sayısının düşük olması tek başına her görevde daha iyi performans anlamına gelmez. Round-trip doğruluğu, tokenization hızı, farklı alanlardaki verimlilik ve morfolojik uyum da değerlendirilmelidir.
-
----
-
-## 10. Doğrulama ve Kalite Kontrolü
-
-Tokenizer eğitiminin ardından çeşitli testler uygulanabilir.
-
-### Round-trip validation
-
-Metnin encode ve decode işlemlerinden sonra orijinal metinle aynı olup olmadığı kontrol edilir.
-
-### Synthetic tests
-
-Türkçe karakterler, ekler, kesme işaretleri, özel karakterler ve farklı metin biçimleriyle sentetik testler yapılır.
-
-### Holdout tests
-
-Eğitim verisinden ayrılan belgeler üzerinde değerlendirme yapılabilir.
-
-### Batch consistency
-
-Batch encoding ve tek tek encoding sonuçlarının tutarlılığı kontrol edilir.
-
-### Save/load validation
-
-Kaydedilen tokenizer yeniden yüklenerek aynı metinlerde aynı token ID dizilerini üretip üretmediği test edilir.
-
----
-
-## 11. Dosya Yapısı ve Çıktılar
-
-Projenin ana çıktıları aşağıdaki gibi düzenlenmiştir:
-
-```text
-RUZGAR_V13/
-│
-├── datasets/
-│   ├── fineweb2/
-│   ├── turkish_corpus_100b/
-│   ├── umarigan/
-│   └── _cache/
-│
-├── models/
-│   └── ruzgar_256k/
-│       ├── tokenizer.json
-│       └── config.json
-│
-├── morphology/
-│   ├── morphology_word_corpus.tsv
-│   ├── zeyrek_analyses.jsonl
-│   ├── morfessor_model.bin
-│   ├── morfessor_segments.jsonl
-│   ├── unified_morphology.jsonl
-│   └── suffix_inventory.json
-│
-├── benchmarks/
-│   └── benchmark_results.json
-│
-├── logs/
-│   └── ruzgar_v13_1_*.log
-│
-├── export/
-│   └── RuzgarTokenizer.zip
-│
-├── results.json
-└── README.md
-```
-
-Dosyaların gerçek isimleri ve mevcut olup olmadıkları çalıştırma yapılandırmasına göre değişebilir.
-
----
-
-## 12. GitHub ve Hugging Face Dağıtımı
-
-Tokenizer'ın büyük dosyaları standart GitHub dosya yükleme sınırlarını aşabildiğinden proje dosyaları **ZIP arşivi** halinde GitHub üzerinde dağıtılmaktadır.
-
-Bu yöntem, büyük vocabulary ve model dosyalarının tek bir paket olarak indirilmesini kolaylaştırır.
-
-### Hugging Face
-
-Tokenizer dosyaları:
-
-https://huggingface.co/brun12/RuzgarTokenizer
-
-### GitHub
-
-Kaynak kodu, README, benchmark raporları ve ZIP dağıtım paketi:
-
-`RuzgarTokenizer`
-
-ZIP arşivi indirilirken sürüm ve dosya bütünlüğü bilgilerinin kontrol edilmesi önerilir.
-
----
-
-## 13. Kullanım
-
-Python ile yerel tokenizer dosyasını yüklemek için:
-
-```python
-from tokenizers import Tokenizer
-
-tokenizer = Tokenizer.from_file(
-    "tokenizer.json"
-)
-
-text = "Türkçenin morfolojik yapısını verimli biçimde temsil etmek."
-
-encoded = tokenizer.encode(text)
-
-print("Tokens:", encoded.tokens)
-print("Token IDs:", encoded.ids)
-print("Token count:", len(encoded.ids))
-
-decoded = tokenizer.decode(encoded.ids)
-
-print("Decoded:", decoded)
-```
-
-### Tokenizer bilgilerini görüntüleme
-
-```python
-from tokenizers import Tokenizer
-
-tokenizer = Tokenizer.from_file("tokenizer.json")
-
-print("Vocabulary size:", tokenizer.get_vocab_size())
-print("Special tokens:", tokenizer.get_added_tokens_decoder())
-```
-
----
-
-## 14. Gelecek Geliştirmeler
-
-- Daha geniş Türkçe benchmark kümeleri.
-- Farklı alanlarda token verimliliği karşılaştırmaları.
-- Daha kapsamlı morfolojik değerlendirme.
-- BPE ve morfem sınırlarının daha ayrıntılı incelenmesi.
-- Encoding ve decoding hız optimizasyonları.
-- Bellek ve model yükleme süresi ölçümleri.
-- Uzun metin performans testleri.
-- Daha fazla tokenizer karşılaştırması.
-- Python paket entegrasyonu.
-- Daha kapsamlı API ve kullanım dokümantasyonu.
-
----
-
-## 15. Geliştirici
-
-**Rüzgar Vatansever**
-
-RuzgarTokenizer, Türkçe için daha verimli tokenizasyon sistemleri geliştirmek amacıyla hazırlanmış bağımsız bir projedir.
-
-Projenin odağında Türkçenin morfolojik ve dilbilimsel özellikleri, büyük ölçekli veri işleme, vocabulary tasarımı ve karşılaştırmalı tokenizer araştırmaları bulunmaktadır.
-
-**Project:** RuzgarTokenizer  
-**Developer:** Rüzgar Vatansever  
-**Algorithm:** ByteLevel BPE  
-**Vocabulary target:** 256K  
-**Primary language:** Turkish  
-**Hugging Face:** https://huggingface.co/brun12/RuzgarTokenizer
-
----
-
-# 🇬🇧 ENGLISH
-
-## 1. About the Project
-
-**RuzgarTokenizer** is an experimental Turkish-focused tokenizer project developed by **Rüzgar Vatansever**. It features a target vocabulary of 256,000 tokens and is designed to investigate efficient text representation for Turkish, with particular attention to the language's agglutinative morphology and word-formation patterns.
-
-The project goes beyond basic tokenizer training. It includes a complete development pipeline covering large-scale dataset processing, corpus validation, Turkish-specific pre-tokenization, morphological analysis, unsupervised morpheme discovery, vocabulary construction, BPE training, tokenizer validation, and comparative benchmarking.
-
-### Key features
-
-- 256,000 target vocabulary.
-- ByteLevel BPE algorithm.
-- Rust-powered Hugging Face Tokenizers engine.
-- Custom Turkish pre-tokenization.
-- Zeyrek morphological analysis.
-- Morfessor unsupervised morpheme discovery.
-- Custom Turkish suffix inventory.
-- Morphological analysis and BPE boundary alignment.
-- Large-scale Parquet processing.
-- Parallel CPU and Rust/Rayon execution.
-- Round-trip and consistency validation.
-- Comparative tokenizer benchmarking.
+- 256.000 hedef vocabulary kapasitesi.
+- Rust tabanlı Hugging Face Tokenizers altyapısı.
+- ByteLevel BPE tokenization.
+- Türkçe odaklı özel pre-tokenization yaklaşımı.
+- Zeyrek ile Türkçe biçimbilimsel analiz.
+- Morfessor ile denetimsiz morfem keşfi.
+- Özel Türkçe ek envanteri ve sezgisel morfolojik analiz.
+- Büyük ölçekli Parquet veri kümeleriyle çalışma.
+- Streaming ve batch tabanlı veri işleme.
+- Çok iş parçacıklı indirme ve paralel işlem altyapısı.
+- SQLite tabanlı ara indeksleme.
+- JSON ve JSONL tabanlı araştırma çıktıları.
+- Token fertility, round-trip ve throughput ölçümleri.
+- BPE–Morfessor sınır hizalama analizi.
+- Otomatik raporlama, loglama ve ZIP paketleme.
 
 ---
 
@@ -701,627 +45,1054 @@ The project goes beyond basic tokenizer training. It includes a complete develop
 
 ### 2.1 ByteLevel BPE
 
-RuzgarTokenizer is built around **ByteLevel Byte Pair Encoding (BPE)**.
+RuzgarTokenizer'ın temel tokenization algoritması **Byte-Level Byte Pair Encoding (BPE)** yöntemidir.
 
-BPE learns frequently occurring character sequences and subword units from a training corpus. These learned units are represented in the tokenizer vocabulary.
+BPE, metin içindeki sık karşılaşılan sembol dizilerini birleştirerek daha büyük token birimleri oluşturur. Eğitim sürecinde bu birleşimler, metin korpusundaki frekans dağılımlarından öğrenilir.
 
-The ByteLevel approach operates on byte-level text representations, helping the tokenizer handle different characters and writing patterns.
+Byte-level yaklaşım, metinleri byte temelli bir gösterim üzerinden ele alarak farklı karakterlerin ve Unicode metinlerin işlenmesinde esneklik sağlar.
 
-Reasons for this design include:
+Bu yaklaşım özellikle Türkçe gibi ASCII dışı karakterlerin yoğun kullanıldığı diller açısından önemlidir.
 
-- Byte-level representation of Turkish characters.
-- Flexible subword tokenization.
-- Handling of previously unseen character sequences.
-- Efficient representation of frequent text patterns with a large vocabulary.
-- Compatibility with modern NLP infrastructure.
+Örnek Türkçe karakterler:
 
-The actual algorithm is **ByteLevel BPE, not Unigram**.
+- ç
+- ğ
+- ı
+- İ
+- ö
+- ş
+- ü
 
-### 2.2 Custom Turkish Pre-tokenizer
+RuzgarTokenizer, bu karakterleri içeren metinlerin tokenization sürecini ByteLevel altyapısı üzerinden gerçekleştirir.
 
-Generic pre-tokenization rules do not always account for the writing conventions and morphological structure of every language.
+### 2.2 Rust-Powered Tokenization Engine
 
-Turkish introduces additional considerations, including suffixation, apostrophes, proper nouns, and language-specific characters.
+Tokenizer eğitim ve encoding altyapısında Hugging Face `tokenizers` kütüphanesi kullanılmaktadır.
 
-RuzgarTokenizer therefore includes a custom pre-tokenization mode called `turkish_split`.
+Bu kütüphane, performans açısından kritik işlemleri Rust tarafında gerçekleştirir. Python ise veri hazırlama, eğitim akışını yönetme, morfolojik analizleri yürütme, raporlama ve deney organizasyonu gibi üst seviye görevleri üstlenir.
 
-It aims to provide more controlled initial text segmentation based on Turkish writing conventions and word boundaries.
+Bu mimari, Python'ın esnekliğini Rust'ın performans odaklı işlem altyapısıyla birleştirir.
 
-An alternative GPT-2 regex-based pre-tokenization mode is also available.
+Kullanılan teknolojiler:
 
-### 2.3 Vocabulary configuration
+- **Rust:** Tokenizer motorunun performans odaklı uygulaması.
+- **Rayon:** Rust tarafındaki paralel işlem altyapısı.
+- **Python:** Veri işleme, deney yönetimi ve orkestrasyon.
+- **Hugging Face Tokenizers:** BPE modelinin eğitimi ve tokenizer operasyonları.
 
-The target vocabulary size is:
+Kod, paralellik için `TOKENIZERS_PARALLELISM`, `RAYON_NUM_THREADS`, `OMP_NUM_THREADS`, `MKL_NUM_THREADS` ve `OPENBLAS_NUM_THREADS` gibi ortam değişkenlerini yapılandırır.
 
-**256,000 tokens**
+**Önemli:** Bu mimari GPU eğitimi anlamına gelmez. V13.2 kodu BPE eğitimini CPU üzerinde Rust/Rayon altyapısıyla yürütür. GPU kullanımı bu sürümde etkin değildir.
 
-| Parameter | Value |
+### 2.3 Vocabulary Configuration
+
+| Parametre | Değer |
+|---|---:|
+| Hedef vocabulary | 256.000 |
+| BPE minimum frequency | 2 |
+| Special token | `<|endoftext|>` |
+| Padding token | `<|pad|>` |
+| Tokenization algorithm | ByteLevel BPE |
+| Default pre-tokenizer mode | `turkish_split` |
+
+256K vocabulary tercihi, Türkçe kelime biçimlerinin ve sık karşılaşılan alt dizilerin daha geniş bir token havuzunda temsil edilmesini araştırmak amacıyla yapılmıştır.
+
+Büyük vocabulary tek başına daha iyi bir tokenizer garantisi değildir. Gerçek performans; token sayısı, modelin embedding maliyeti, genelleme, latency, throughput ve farklı metin türlerindeki davranış birlikte değerlendirilerek yorumlanmalıdır.
+
+---
+
+## 3. Turkish-Aware Pre-Tokenization
+
+Türkçe, kelime köklerine çok sayıda yapım ve çekim eki eklenebilen eklemeli bir dildir.
+
+Örneğin tek bir kök, farklı ek kombinasyonlarıyla çok sayıda kelime biçimi oluşturabilir.
+
+Bu durum tokenizer tasarımında şu problemleri ortaya çıkarabilir:
+
+- Uzun kelimelerin fazla sayıda parçaya ayrılması.
+- Sık kullanılan eklerin farklı bağlamlarda tutarsız temsil edilmesi.
+- Kelime kökleri ile eklerin token sınırlarının örtüşmemesi.
+- Türkçe karakterlerin ve apostrof kullanımının işlenmesi.
+- Nadir kelime biçimlerinin token dağılımına etkisi.
+
+RuzgarTokenizer bu konuları incelemek için iki pre-tokenization seçeneği sunar:
+
+1. `turkish_split`
+2. `gpt2`
+
+Varsayılan yapılandırma:
+
+```python
+PRETOKENIZER_MODE = "turkish_split"
+```
+
+Özel Türkçe split yaklaşımı, BPE eğitiminden önce metnin parçalanma biçimini Türkçe metin özelliklerine göre düzenlemek amacıyla kullanılır.
+
+GPT-2 seçeneği ise karşılaştırma ve alternatif deneyler için yapılandırmada tutulur.
+
+Bu iki seçenek aynı tokenizer algoritmasının yerine geçen farklı algoritmalar değildir. BPE eğitimine giden metnin önceden nasıl bölüneceğini belirleyen seçeneklerdir.
+
+---
+
+## 4. Morphological Research Architecture
+
+RuzgarTokenizer'ın önemli araştırma bileşenlerinden biri morfolojik analiz altyapısıdır.
+
+Bu katman, tokenizer'ın token sınırlarını Türkçenin kelime ve ek yapılarıyla karşılaştırmayı amaçlar.
+
+Morfolojik analiz sonuçları doğrudan BPE algoritmasının yerine kullanılmaz. Bunlar ayrı araştırma çıktıları olarak üretilir ve tokenizer'ın davranışını incelemek için değerlendirilir.
+
+### 4.1 Zeyrek — Turkish Morphological Analysis
+
+Zeyrek, Türkçe morfolojik analiz için kullanılan bileşendir.
+
+Proje içerisinde kelimeler üzerinde analiz gerçekleştirmek ve mümkün olduğunda aşağıdaki bilgileri elde etmek amacıyla kullanılır:
+
+- Lemma / kök bilgisi.
+- Morfolojik analiz sonuçları.
+- Bir kelime için birden fazla analiz bulunup bulunmadığı.
+- Analiz durumları.
+- Sözcük türü (POS) dağılımları.
+- Belirsiz veya çoklu analiz sonuçları.
+
+Kod, Zeyrek işlemlerini çoklu işçi süreçleriyle yürütmeye yönelik bir altyapı da içerir.
+
+İşlem sırasında:
+
+- İş yükü parçalara ayrılır.
+- Worker süreçleri oluşturulur.
+- İşlem ilerlemesi takip edilir.
+- Hata veren parçalar raporlanır.
+- Gerekli durumlarda eksik parçaların ana süreçte tamamlanması sağlanır.
+
+Zeyrek çıktıları JSONL biçiminde saklanır. Böylece her kelimenin analiz sonuçları diğer araştırma çıktılarından bağımsız olarak incelenebilir.
+
+### 4.2 Morfessor — Unsupervised Morpheme Discovery
+
+Morfessor, kelimeleri alt birimlere ayırmayı öğrenmek için kullanılan denetimsiz morfem keşif bileşenidir.
+
+RuzgarTokenizer içerisinde Morfessor'ın `BaselineModel` yaklaşımı kullanılmaktadır.
+
+Eğitim verisi, hazırlanan kelime korpusundaki kelime ve frekans bilgilerinden oluşturulur.
+
+İşlem akışı:
+
+1. Kelime korpusunun okunması.
+2. Morfessor veri formatının hazırlanması.
+3. Modelin oluşturulması.
+4. `train_batch` üzerinden model eğitimi.
+5. Epoch ve maliyet bilgilerinin kaydedilmesi.
+6. Modelin binary biçimde diske yazılması.
+7. Yeniden yüklenerek doğrulanması.
+8. Viterbi tabanlı segmentasyon.
+9. Segmentasyon sonuçlarının JSONL olarak saklanması.
+
+Yapılandırılabilir parametreler:
+
+| Parametre | Varsayılan değer |
+|---|---:|
+| Maximum epochs | 15 |
+| Finish threshold | 0.001 |
+| Damping | none |
+| Top morphemes | 3.000 |
+
+Morfessor çıktıları sayesinde şu istatistikler hesaplanabilir:
+
+- Kelime başına ortalama morfem sayısı.
+- Benzersiz morfem sayısı.
+- En sık görülen morfemler.
+- Frekansa göre ağırlıklandırılmış morfem dağılımı.
+- Bölünmeden kalan kelimeler.
+- Segmentasyon hataları.
+- Segmentlerin orijinal kelimeyi yeniden oluşturup oluşturmadığı.
+
+**Bilimsel not:** Morfessor denetimsiz bir yöntemdir. Ürettiği segmentler gerçek dilbilimsel morfemlerin kesin altın standardı olarak kabul edilmez.
+
+### 4.3 Custom Turkish Suffix Inventory
+
+Projede Türkçeye özgü eklerin incelenmesi için özel bir ek envanteri ve sezgisel analiz bileşenleri de bulunmaktadır.
+
+Bu katman, kelime biçimlerini ve olası ek ayrımlarını incelemek amacıyla kullanılır.
+
+Sezgisel analizler, Zeyrek ve Morfessor çıktılarıyla birlikte değerlendirilerek farklı yöntemlerin aynı kelime üzerindeki sonuçları karşılaştırılabilir.
+
+### 4.4 Unified Morphology Dataset
+
+Proje, morfolojik analiz sonuçlarını ayrı ayrı saklamakla yetinmez.
+
+Zeyrek, Morfessor ve sezgisel analizlerden elde edilen bilgileri ortak bir veri yapısında birleştiren bir aşama da içerir.
+
+Bu aşamada:
+
+- JSONL dosyaları okunur.
+- SQLite üzerinden kelime indeksleri oluşturulur.
+- Kelime bazında analiz sonuçları eşleştirilir.
+- Lemma ve segmentasyon bilgileri karşılaştırılır.
+- Fonolojik değişimlere ilişkin korpus kanıtları eklenir.
+- Sonuçlar birleşik JSONL veri kümesine yazılır.
+
+SQLite ara indeksleri, tüm kayıtların aynı anda belleğe yüklenmesi ihtiyacını azaltmak amacıyla kullanılır.
+
+### 4.5 Morphology–Tokenizer Alignment
+
+RuzgarTokenizer, BPE token sınırlarının Morfessor tarafından üretilen segment sınırlarıyla ne ölçüde örtüştüğünü ölçen bir analiz de içerir.
+
+Bu analizde:
+
+- BPE token sınırları çıkarılır.
+- Morfessor segment sınırları belirlenir.
+- İki sınır kümesinin kesişimi hesaplanır.
+- Precision, recall ve F1 değerleri üretilir.
+- Tam sınır eşleşmesi görülen kelimelerin oranı hesaplanır.
+
+Ölçümde kullanılan temel metrikler:
+
+\[
+Precision = \frac{|BPE \cap Morfessor|}{|BPE|}
+\]
+
+\[
+Recall = \frac{|BPE \cap Morfessor|}{|Morfessor|}
+\]
+
+\[
+F1 = 2 \cdot \frac{Precision \cdot Recall}{Precision + Recall}
+\]
+
+Bu metrikler tokenizer'ın morfolojik açıdan kesin doğruluğunu kanıtlamaz. Morfessor segmentasyonu denetimsiz olduğu için sonuçlar, iki farklı bölümleme yaklaşımının sınır uyumunu inceleyen araştırma göstergeleri olarak yorumlanmalıdır.
+
+---
+
+## 5. Large-Scale Dataset Engineering
+
+Tokenizer kalitesi, eğitim verisinin kapsamı ve niteliğinden bağımsız düşünülemez.
+
+RuzgarTokenizer'ın veri altyapısı, Hugging Face Hub üzerinde barındırılan büyük Parquet veri kümelerini keşfetmek, indirmek, doğrulamak ve akış halinde işlemek üzere tasarlanmıştır.
+
+### 5.1 Configured Dataset Sources
+
+V13.2 yapılandırmasında üç veri kaynağı tanımlıdır:
+
+| Dataset | Repository | Configured weight |
+|---|---|---:|
+| FineWeb-2 Turkish | `HuggingFaceFW/fineweb-2` | %40 |
+| Turkish Corpus 100B | `hasankursun/turkish-corpus-100b` | %40 |
+| Umarigan Turkish Corpus | `umarigan/turkish_corpus` | %20 |
+
+Bu yüzdeler kodda tanımlanan kaynak ağırlıklarıdır. Her çalıştırmanın nihai veri dağılımının bu oranlarla birebir aynı olduğu anlamına gelmez.
+
+Kaynaklar, dosya boyutları ve mevcut veri miktarına göre dönüşümlü biçimde işlenir.
+
+### 5.2 Hugging Face Hub Integration
+
+Veri keşfi ve indirme aşamasında Hugging Face Hub API kullanılır.
+
+Kullanılan bileşenler:
+
+- `HfApi`
+- `hf_hub_download`
+- `list_repo_tree`
+- `list_repo_files`
+- `get_paths_info`
+
+Sistem, veri deposunun dosya yapısını API üzerinden keşfeder. Beklenen dosya yolları bulunamadığında alternatif keşif ve yerel önbellek mekanizmalarını deneyebilir.
+
+### 5.3 Apache Arrow & Parquet Processing
+
+Veri okuma ve doğrulama altyapısında Apache Arrow ekosisteminin PyArrow bileşenleri kullanılır.
+
+Parquet dosyalarının:
+
+- Metadata bilgileri.
+- Satır sayıları.
+- Row group sayıları.
+- Sütun adları.
+- Metin sütunları.
+- Dil ve kaynak etiketleri.
+
+incelenir.
+
+Sistem, olası metin sütunlarını farklı sütun adları üzerinden keşfedebilir. Böylece veri kümelerinin farklı şemalarıyla çalışmak kolaylaşır.
+
+### 5.4 Streaming Data Pipeline
+
+Büyük veri kümelerini tamamen RAM'e yüklemek yerine streaming ve batch tabanlı işleme yaklaşımı kullanılır.
+
+Yapılandırma:
+
+```python
+PARQUET_BATCH_SIZE = 8192
+DOWNLOAD_WORKERS = 8
+DOWNLOAD_RETRIES = 4
+```
+
+Bu yaklaşımın hedefleri:
+
+- Büyük veri kümelerini kontrollü okumak.
+- Bellek tüketimini sınırlamak.
+- Kaynaklar arasında dengeli veri akışı sağlamak.
+- İndirme hatalarını yeniden denemek.
+- İşlem sırasında ilerlemeyi takip etmek.
+
+### 5.5 Dataset Quality & Validation
+
+Veri hazırlama aşamasında aşağıdaki kontroller uygulanır:
+
+- Parquet dosyası bütünlüğü.
+- Dosya boyutu doğrulaması.
+- Metadata ve şema kontrolü.
+- Metin sütunu tespiti.
+- Dil etiketi incelemesi.
+- Boş veya geçersiz kayıtların ele alınması.
+- İsteğe bağlı birebir tekrar kontrolü.
+- Örnekleme ve holdout ayırma.
+
+Tekrar tespiti etkinleştirildiğinde Bloom Filter kullanılır.
+
+Bu yapı bellek açısından verimli bir birebir tekrar kontrolü yaklaşımıdır; benzer fakat aynı olmayan metinleri yakalayan bir near-duplicate sistemi değildir.
+
+### 5.6 Reproducibility
+
+Veri örnekleme ve işleme aşamalarında sabit bir random seed kullanılır.
+
+```python
+RANDOM_SEED = 20261116
+```
+
+Morfoloji örneklemesinde Reservoir Sampling (Algorithm R) yaklaşımı kullanılır.
+
+Bu yöntem, büyük veri akışlarından sınırlı sayıda örnek seçerken tüm veri kümesini bellekte tutma ihtiyacını azaltır.
+
+---
+
+## 6. Performance-Oriented Engineering
+
+RuzgarTokenizer'ın altyapısı yalnızca token üretimine değil, uzun süren eğitim ve veri işleme görevlerinin izlenebilirliğine de odaklanır.
+
+### 6.1 Parallel Processing
+
+Projede farklı görevler için farklı paralellik yaklaşımları kullanılır:
+
+- Rust/Rayon tabanlı tokenizer işlemleri.
+- ThreadPoolExecutor tabanlı paralel dosya indirme.
+- Zeyrek için çoklu worker süreçleri.
+- Python multiprocessing.
+- Morfoloji ve veri işleme aşamalarında kontrollü görev dağıtımı.
+
+### 6.2 Memory-Aware Execution
+
+`psutil` üzerinden sistem ve süreç kaynakları izlenir.
+
+İzlenen bilgiler:
+
+- CPU kullanımı.
+- Süreç RSS bellek tüketimi.
+- Kullanılabilir RAM.
+- Toplam RAM.
+- Disk boş alanı.
+- Disk kullanımı.
+
+Ayrıca cgroup bellek sınırlarını tespit etmeye yönelik kontrol bulunur. Bu, özellikle konteyner tabanlı ortamlarda host RAM miktarının yanıltıcı olmasını önlemeye yardımcı olur.
+
+### 6.3 Fault Tolerance & Recovery
+
+Uzun süreli işlemlerde tek bir modülün başarısız olması bütün projenin otomatik olarak durması anlamına gelmez.
+
+Modül izolasyonu sayesinde aşamalar ayrı ayrı çalıştırılır ve durumları kaydedilir.
+
+Ek mekanizmalar:
+
+- Retry ve exponential backoff.
+- Atomic file writes.
+- JSONL geçici dosya kullanımı.
+- Dosya doğrulama önbelleği.
+- Aşama bazlı durum takibi.
+- Heartbeat sistemi.
+- Hata logları.
+- Önceki geçerli çıktıları yeniden kullanma.
+- Gerekli aşamaları zorla yeniden çalıştırma seçenekleri.
+
+Atomic write yaklaşımı, bir dosya yazımı tamamlanmadan önce hedef dosyanın yarım kalmış yeni bir sürümle değiştirilmesini önlemeye yardımcı olur.
+
+### 6.4 Persistent Outputs
+
+Proje çıktıları farklı amaçlara göre ayrılmış dizinlerde saklanır:
+
+```text
+RUZGAR_V13/
+├── datasets/
+├── models/
+│   └── ruzgar_256k/
+├── morphology/
+├── logs/
+├── benchmarks/
+├── export/
+└── _tmp/
+```
+
+Geçici dosyalar, önbellekler ve ham veri kümeleri model dağıtım paketine dahil edilmez.
+
+---
+
+## 7. Benchmark & Comparative Evaluation
+
+RuzgarTokenizer'ın performansı, aynı metin koleksiyonu üzerinde farklı tokenizer sistemleriyle karşılaştırılmıştır.
+
+Aşağıdaki sonuçlar yüklenen `benchmark_results(1).csv` dosyasından alınmıştır.
+
+### 7.1 Benchmark Dataset
+
+| Metric | Value |
+|---|---:|
+| Total documents | 51,140 |
+| Failed documents | 0 |
+| UTF-8 input size | 200 MiB |
+| Bytes | 209,715,200 |
+| Characters | 192,131,260 |
+| Whitespace-separated words | 24,612,007 |
+
+Karşılaştırılan tokenizer'lar aynı belge sayısı, karakter sayısı, byte miktarı ve kelime sayısı üzerinde değerlendirilmiştir.
+
+### 7.2 Token Efficiency Results
+
+| Tokenizer | Vocabulary | Total tokens | Tokens / byte | Tokens / 1,000 words |
+|---|---:|---:|---:|---:|
+| **Ruzgar-256K** | 256,000 | **35,741,100** | **0.1704** | **1,452.18** |
+| OpenAI o200k_base | 200,019 | 57,460,095 | 0.2740 | 2,334.64 |
+| Qwen 2.5 | 151,643 | 66,276,713 | 0.3160 | 2,692.86 |
+| OpenAI cl100k_base | 100,277 | 75,408,571 | 0.3596 | 3,063.89 |
+| DeepSeek V3 | 128,000 | 79,031,654 | 0.3769 | 3,211.10 |
+| NEDO 32K | 32,768 | 81,762,570 | 0.3899 | 3,322.06 |
+
+<small>Source: Uploaded comparative benchmark CSV. Vocabulary values are the values recorded in that benchmark.</small>
+
+### 7.3 Token Count Reduction
+
+RuzgarTokenizer'ın ölçülen token sayısı ile diğer tokenizer'ların ölçülen token sayıları arasındaki fark:
+
+| Compared tokenizer | Ruzgar token reduction |
+|---|---:|
+| NEDO 32K | **56.29%** |
+| DeepSeek V3 | **54.77%** |
+| OpenAI cl100k_base | **52.61%** |
+| Qwen 2.5 | **46.08%** |
+| OpenAI o200k_base | **37.80%** |
+
+Bu oranlar, aynı benchmark metinlerinde üretilen toplam token sayılarının karşılaştırılmasından hesaplanmıştır.
+
+Bu sonuçlar, ölçülen veri kümesinde RuzgarTokenizer'ın daha az token ürettiğini gösterir. Tek başına bütün dillerde veya bütün kullanım senaryolarında üstünlük kanıtı değildir.
+
+### 7.4 Throughput Results
+
+| Tokenizer | Documents / sec | MB / sec | Tokens / sec |
+|---|---:|---:|---:|
+| Ruzgar-256K | 667.13 | 2.61 | 466,251 |
+| NEDO 32K | 346.69 | 1.36 | 554,285 |
+| OpenAI o200k_base | 3,630.37 | 14.20 | 4,079,031 |
+| OpenAI cl100k_base | 2,910.57 | 11.38 | 4,291,790 |
+| Qwen 2.5 | 692.62 | 2.71 | 897,627 |
+| DeepSeek V3 | 706.62 | 2.76 | 1,092,013 |
+
+RuzgarTokenizer'ın token sayısı verimliliği ile encoding hızı birbirinden ayrı değerlendirilmelidir.
+
+Benchmark dosyasına göre OpenAI encodings daha yüksek throughput değerleri göstermiştir. Dolayısıyla RuzgarTokenizer'ın temel iddiası bu ölçümde en yüksek encoding hızına sahip olmak değil, Türkçe benchmark metninde token sayısını azaltmaktır.
+
+### 7.5 Latency Results
+
+| Tokenizer | P50 latency | P95 latency | P99 latency |
+|---|---:|---:|---:|
+| Ruzgar-256K | 0.662 ms | 4.634 ms | 11.256 ms |
+| NEDO 32K | 1.266 ms | 9.160 ms | 22.525 ms |
+| OpenAI o200k_base | 0.120 ms | 0.768 ms | 1.780 ms |
+| OpenAI cl100k_base | 0.151 ms | 0.994 ms | 2.303 ms |
+| Qwen 2.5 | 0.653 ms | 4.447 ms | 10.422 ms |
+| DeepSeek V3 | 0.626 ms | 4.430 ms | 10.363 ms |
+
+Latency değerleri milisaniye cinsindendir.
+
+P50 medyan gecikmeyi, P95 ölçümlerin yüzde 95'inin altında kaldığı gecikmeyi, P99 ise yüzde 99'luk gecikme sınırını ifade eder.
+
+### 7.6 Benchmark Interpretation
+
+Benchmark sonuçları üç farklı performans boyutunu gösterir:
+
+**1. Token efficiency**
+
+RuzgarTokenizer, bu 200 MiB Türkçe benchmark setinde karşılaştırılan sistemlerden daha az token üretmiştir.
+
+**2. Encoding throughput**
+
+Token üretim hızı bakımından sonuçlar tokenizer uygulamasına ve ölçüm ortamına göre değişmektedir. CSV'de OpenAI encodings daha yüksek throughput göstermiştir.
+
+**3. Latency**
+
+RuzgarTokenizer'ın P50/P95/P99 değerleri düşük milisaniye seviyesindedir; ancak aynı ölçümde OpenAI encodings daha düşük latency değerlerine sahiptir.
+
+Benchmark sonuçlarını yeniden üretilebilir kılmak için kullanılan donanım, yazılım sürümleri, tokenizer wrapper'ları, batch büyüklükleri, warm-up sayısı ve ölçüm yöntemiyle birlikte ham CSV'nin yayımlanması önerilir. Mevcut CSV bu bilgilerin tamamını içermemektedir.
+
+---
+
+## 8. Internal Benchmarking & Validation
+
+Harici karşılaştırma CSV'sinden ayrı olarak V13.2 kodunda kendi benchmark aşaması da bulunur.
+
+Bu aşama şu metrikleri üretir:
+
+- Toplam token sayısı.
+- Token per word.
+- Characters per token.
+- Bytes per token.
+- Tokens per 1,000 characters.
+- Batch documents per second.
+- Single-thread documents per second.
+- Batch tokens per second.
+- CPU thread sayısı.
+- Round-trip doğruluğu.
+- Tokenizer dosya boyutu.
+- Eğitim süresi.
+- Eğitim veri miktarı.
+
+### Round-Trip Validation
+
+Tokenizer'ın encoding ve decoding işlemlerinin metni koruyup korumadığı kontrol edilir.
+
+```python
+encoded = tokenizer.encode(text)
+decoded = tokenizer.decode(encoded.ids)
+```
+
+Testin amacı, özel token ayarları dışında giriş metninin decoding sonrasında aynı kalıp kalmadığını doğrulamaktır.
+
+### Word Fertility
+
+Word fertility analizi, kelimelerin ortalama kaç token ile temsil edildiğini inceler.
+
+Üretilen metrikler:
+
+- Kelime türü başına ortalama token.
+- Frekans ağırlıklı token/kelime oranı.
+- Tek token ile temsil edilen kelimelerin yüzdesi.
+
+Bu ölçüm, Türkçedeki sık kullanılan kelimelerin tokenization davranışını incelemek için kullanılır.
+
+---
+
+## 9. Twelve-Stage Development Pipeline
+
+V13.2 projesinin ana akışı modüler aşamalardan oluşur.
+
+| Stage | Component | Purpose |
+|---:|---|---|
+| 1 | Environment & packages | Paketlerin ve çalışma ortamının hazırlanması |
+| 2 | Dataset discovery | Veri kaynaklarının ve Parquet dosyalarının keşfi |
+| 3 | Dataset download | Dosyaların indirilmesi ve mevcut dosyaların korunması |
+| 4 | Parquet validation | Şema, metadata ve metin sütunu doğrulaması |
+| 5 | Streaming data preparation | Veri akışı, filtreleme ve örnekleme |
+| 6 | Corpus statistics | Veri ve kelime istatistiklerinin oluşturulması |
+| 7 | Word corpus | Morfoloji için kelime korpusunun hazırlanması |
+| 8 | Zeyrek analysis | Türkçe morfolojik analiz |
+| 9 | Morfessor training | Denetimsiz morfem keşfi |
+| 10 | Unified morphology | Morfoloji sonuçlarının birleştirilmesi |
+| 11 | Benchmark & validation | Tokenizer performansının ölçülmesi |
+| 12 | ZIP export | Model ve araştırma çıktılarının paketlenmesi |
+
+Bu yapı, her aşamanın ayrı durum ve hata bilgileriyle takip edilmesini sağlar.
+
+---
+
+## 10. Technology Stack
+
+| Technology | Role |
+|---|---|
+| Python | Pipeline orchestration and data processing |
+| Rust | High-performance tokenizer engine |
+| Rayon | Parallel execution in Rust tokenizer operations |
+| Hugging Face Tokenizers | ByteLevel BPE training and encoding |
+| Hugging Face Hub | Dataset discovery and downloads |
+| PyArrow | Apache Arrow and Parquet processing |
+| Zeyrek | Turkish morphological analysis |
+| Morfessor | Unsupervised morpheme discovery |
+| SQLite | Disk-backed morphology indexing |
+| JSON / JSONL | Structured experiment outputs |
+| psutil | CPU, memory and process monitoring |
+| multiprocessing | Parallel morphology workloads |
+| ThreadPoolExecutor | Concurrent downloads |
+| hashlib | File and input hashing |
+| zipfile | Model and research artifact packaging |
+| Marimo | Notebook-based execution environment |
+
+---
+
+## 11. Reliability, Logging & Reproducibility
+
+Uzun süreli veri ve eğitim işlemlerinde hata yönetimi önemli bir tasarım unsurudur.
+
+RuzgarTokenizer'ın V13.2 altyapısında:
+
+- Her modülün çalışma durumu tutulur.
+- Modül çalışma süreleri kaydedilir.
+- Hata mesajları ve traceback bilgileri loglanır.
+- Uzun işlemler heartbeat mesajları üretir.
+- İndirme hataları tekrar denenebilir.
+- Geçerli Parquet dosyaları doğrulama önbelleğinde tutulur.
+- JSON ve JSONL dosyaları atomik biçimde yazılır.
+- Önceki geçerli eğitim ve analiz çıktıları yeniden kullanılabilir.
+- Yeniden eğitim ve yeniden örnekleme ayrı parametrelerle zorlanabilir.
+
+Bu yaklaşım, büyük veri işleme görevlerinde hata sonrası toparlanmayı ve deneylerin izlenebilirliğini kolaylaştırır.
+
+---
+
+## 12. Model Packaging & Distribution
+
+Proje, tokenizer ve araştırma çıktılarının paylaşılabilmesi için ZIP paketleme aşamasına sahiptir.
+
+Paketleme sistemi:
+
+- Model dosyalarını toplar.
+- Morfoloji sonuçlarını dahil eder.
+- Benchmark raporlarını ekler.
+- Log dosyalarını ekler.
+- README dosyasını dahil eder.
+- Ham Parquet datasetlerini dışarıda bırakır.
+- Geçici dosyaları ve önbellekleri dışarıda bırakır.
+- ZIP dosyasını oluşturduktan sonra bütünlük kontrolü yapar.
+
+GitHub'ın dosya boyutu sınırları ve büyük model dosyalarının yönetimi nedeniyle büyük dağıtım dosyaları ZIP paketleri ve Hugging Face Hub üzerinden paylaşılabilir.
+
+**Hugging Face:**  
+https://huggingface.co/brun12/RuzgarTokenizer
+
+---
+
+## 13. Installation & Usage
+
+Tokenizer dosyasını Hugging Face deposundan indirebilirsiniz.
+
+Gerekli paket:
+
+```bash
+pip install tokenizers huggingface_hub
+```
+
+Python örneği:
+
+```python
+from huggingface_hub import hf_hub_download
+from tokenizers import Tokenizer
+
+tokenizer_path = hf_hub_download(
+    repo_id="brun12/RuzgarTokenizer",
+    filename="models/ruzgar_256k/tokenizer.json"
+)
+
+tokenizer = Tokenizer.from_file(tokenizer_path)
+
+text = "RuzgarTokenizer Türkçe metinleri tokenlara ayırır."
+
+encoded = tokenizer.encode(text)
+
+print("Token IDs:", encoded.ids)
+print("Tokens:", encoded.tokens)
+print("Token count:", len(encoded.ids))
+
+decoded = tokenizer.decode(encoded.ids)
+print("Decoded:", decoded)
+```
+
+---
+
+## 14. Project Goals & Future Research
+
+RuzgarTokenizer'ın geliştirme hedefleri:
+
+- Türkçe token verimliliğini daha geniş veri kümelerinde incelemek.
+- Morfolojik sınır uyumunu daha kapsamlı değerlendirmek.
+- Farklı pre-tokenization yaklaşımlarını karşılaştırmak.
+- Türkçe kelime fertility analizlerini genişletmek.
+- Daha fazla bağımsız benchmark veri kümesi oluşturmak.
+- Encoding ve decoding performansını optimize etmek.
+- Farklı vocabulary boyutlarının sonuçlarını incelemek.
+- Bağımsız holdout veri kümelerinde genelleme ölçümlerini artırmak.
+- Benchmark ortamını ve ölçüm protokolünü daha ayrıntılı yayımlamak.
+
+---
+
+## 15. Developer
+
+**RuzgarTokenizer**  
+Developed by **Rüzgar Vatansever**
+
+Project repository:  
+https://huggingface.co/brun12/RuzgarTokenizer
+
+---
+
+# ENGLISH DOCUMENTATION
+
+## 1. Overview
+
+**RuzgarTokenizer** is a Turkish-focused tokenization and morphological research project built around a ByteLevel Byte Pair Encoding (BPE) architecture with a target vocabulary size of 256,000 tokens.
+
+The project aims to investigate token efficiency, text segmentation, morphological structure, and encoding performance in Turkish-language corpora.
+
+Rather than treating tokenization as an isolated operation, RuzgarTokenizer combines a high-performance tokenizer engine with a large-scale data processing pipeline, Turkish morphological analysis, unsupervised morpheme discovery, and comparative benchmarking.
+
+Its development references include NEDO and Morpheus, while its comparative evaluation includes NEDO, OpenAI public encodings, Qwen 2.5, and DeepSeek V3.
+
+## 2. Core Tokenizer Architecture
+
+### ByteLevel BPE
+
+The core algorithm is Byte-Level Byte Pair Encoding.
+
+BPE learns frequent symbol combinations from a training corpus and represents text using a vocabulary of learned subword units.
+
+The byte-level design provides a flexible representation for Unicode text and supports Turkish characters such as:
+
+`ç, ğ, ı, İ, ö, ş, ü`
+
+The configured target vocabulary is 256,000 entries.
+
+| Configuration | Value |
 |---|---:|
 | Target vocabulary | 256,000 |
-| Minimum token frequency | 2 |
-| Special tokens | 2 |
+| Algorithm | ByteLevel BPE |
+| Minimum BPE frequency | 2 |
 | Special tokens | `<|endoftext|>`, `<|pad|>` |
-| Default pre-tokenizer | Turkish Split |
-| Alternative pre-tokenizer | GPT-2 Regex |
-| Maximum token length | Configurable |
+| Default pre-tokenizer | `turkish_split` |
 
-The actual vocabulary size is checked after training. The requested vocabulary and the final vocabulary are treated as separate values.
+### Rust-Based Execution Engine
 
----
+RuzgarTokenizer uses Hugging Face Tokenizers for its BPE training and tokenization operations.
 
-## 3. Turkish Morphology Research
+The architecture combines Python-based pipeline orchestration with a Rust-powered tokenizer engine. Rayon and configurable thread settings support parallel CPU execution.
 
-Turkish is an agglutinative language. A single word stem can receive multiple derivational and inflectional suffixes.
+The Python layer manages data acquisition, preprocessing, morphology, experiment tracking, reporting, and packaging.
 
-For example:
+The tokenizer engine handles performance-critical tokenization operations.
 
-`ev → evler → evlerimiz → evlerimizden → evlerimizdekiler`
+**The V13.2 implementation uses CPU-based Rust/Rayon execution for BPE training. It does not claim GPU-accelerated BPE training.**
 
-This characteristic makes Turkish tokenizer development different from approaches designed primarily around English text.
+## 3. Turkish-Aware Pre-Tokenization
 
-RuzgarTokenizer includes a dedicated morphology research pipeline.
+Turkish is an agglutinative language in which suffixes can create many word forms from a single root.
 
-### 3.1 Zeyrek — Morphological Analysis
+This creates important tokenization challenges:
 
-**Zeyrek** is used to analyze Turkish words and their possible morphological structures.
+- Long inflected word forms.
+- Frequent suffix combinations.
+- Root and suffix boundary representation.
+- Turkish-specific characters.
+- Apostrophe handling.
+- Vocabulary allocation across word forms.
 
-Its role in the project includes:
+RuzgarTokenizer provides two configurable pre-tokenization modes:
 
-- Investigating word roots.
-- Extracting possible morphological analyses.
-- Studying suffix structures.
-- Examining ambiguous words with multiple analyses.
-- Analyzing part-of-speech distributions.
-- Evaluating lemma frequencies.
+- `turkish_split`
+- `gpt2`
 
-Raw Zeyrek analyses and summary statistics can be stored as structured output.
+The default configuration is `turkish_split`.
 
-Zeyrek is a morphological analyzer, not a tokenizer. It is part of the project's linguistic research pipeline.
+These modes determine how text is segmented before BPE training; they are not alternative BPE algorithms.
 
-### 3.2 Morfessor — Unsupervised Morpheme Discovery
+## 4. Morphological Research Framework
 
-**Morfessor** is used for unsupervised morpheme discovery and segmentation.
+RuzgarTokenizer includes a dedicated morphology research pipeline designed to examine the relationship between learned BPE boundaries and Turkish word structure.
 
-It helps investigate how words can be divided into smaller recurring linguistic units.
+### Zeyrek
 
-Its project applications include:
+Zeyrek is used for Turkish morphological analysis.
 
-- Learning possible morpheme boundaries.
-- Discovering frequent morphemes.
-- Producing frequency-weighted morpheme statistics.
-- Segmenting Turkish word forms.
-- Providing additional linguistic evidence for tokenizer research.
+The pipeline records available analysis results, lemmas, ambiguity information, analysis counts, and part-of-speech statistics.
 
-The trained Morfessor model is saved and reloaded for validation.
+A multiprocessing-oriented execution structure supports large word collections. Results are stored in structured JSONL files.
 
-### 3.3 Custom Turkish suffix inventory
+### Morfessor
 
-The project includes a custom suffix inventory for examining Turkish suffix structures.
-
-The inventory covers categories such as:
-
-- Inflectional suffixes.
-- Denominal derivational suffixes.
-- Deverbal derivational suffixes.
-- Denominal verb-forming suffixes.
-- Verbal derivational suffixes.
-- Participial structures.
-- Converb structures.
-- Nominalization patterns.
-
-Surface forms can be generated while accounting for Turkish vowel harmony, consonant alternation, and buffer consonants.
-
-Examples include:
-
-- `-lar / -ler`
-- `-cı / -ci / -cu / -cü`
-- `-lık / -lik / -luk / -lük`
-- `-dan / -den / -tan / -ten`
-
-This system provides additional linguistic analysis capabilities.
-
-### 3.4 Unified morphology analysis
-
-Zeyrek and Morfessor outputs can be combined into a unified morphology dataset.
-
-The combined records can include:
-
-- Zeyrek analyses.
-- Morfessor segmentations.
-- Word frequencies.
-- Custom suffix inventory results.
-- Heuristic suffix analysis.
-- Cross-check information.
-
-This makes it possible to examine how different morphological approaches interpret the same word.
-
-### 3.5 BPE-to-morphology alignment
-
-One of the project's research components compares BPE token boundaries with morpheme boundaries produced by Morfessor.
-
-The evaluation can calculate:
-
-- BPE boundary precision.
-- Morfessor boundary recall.
-- F1 score.
-
-These measurements help investigate how closely the learned BPE segmentation corresponds to linguistic morpheme boundaries.
-
-This is a research and evaluation component. Zeyrek and Morfessor are not required to run during every tokenizer inference operation.
-
----
-
-## 4. Dataset Infrastructure
-
-RuzgarTokenizer is designed to process large Turkish text corpora.
-
-### Dataset sources
-
-| Dataset | Purpose |
-|---|---|
-| FineWeb-2 Turkish | Broad Turkish web text |
-| Turkish Corpus 100B | Large-scale Turkish text distribution |
-| Umarigan Turkish Corpus | Additional Turkish corpus diversity |
-
-Configured source weights:
-
-| Source | Weight |
-|---|---:|
-| FineWeb-2 Turkish | 40% |
-| Turkish Corpus 100B | 40% |
-| Umarigan Turkish Corpus | 20% |
-
-These are configured source weights, not a guarantee that the final training corpus will contain exactly the same proportions.
-
-### 4.1 Hugging Face Hub
-
-Hugging Face Hub is used for dataset discovery and file downloads.
-
-The pipeline selects dataset files according to configured repositories and file patterns.
-
-### 4.2 PyArrow and Parquet
-
-PyArrow is a core part of the data-processing infrastructure.
-
-It enables:
-
-- Reading Parquet metadata.
-- Inspecting dataset schemas.
-- Detecting text columns.
-- Reading row groups and batches.
-- Processing large datasets without loading every file into memory at once.
-
-This approach makes processing hundreds of gigabytes of corpus data more manageable.
-
-### 4.3 Dataset validation
+Morfessor is used for unsupervised morpheme discovery through its `BaselineModel` implementation.
 
 The pipeline includes:
 
-- File integrity checks.
-- Parquet schema validation.
-- Text-column detection.
-- Language-label checks.
-- Invalid-file handling.
-- Download retries.
-- Download and validation reports.
+1. Word corpus loading.
+2. Model initialization.
+3. Batch training.
+4. Epoch and cost tracking.
+5. Binary model serialization.
+6. Model reload verification.
+7. Viterbi segmentation.
+8. Structured segmentation output.
 
-### 4.4 Streaming and batch processing
+The system records average morphemes per word, unique morpheme counts, frequent morphemes, unsplit words, and segmentation errors.
 
-Documents are processed through a streaming reader and grouped into configurable batches.
+Morfessor is an unsupervised method. Its segmentations are not treated as gold-standard linguistic annotations.
 
-Instead of loading an entire corpus into RAM, the pipeline processes data incrementally.
+### Unified Morphology
 
-### 4.5 Deduplication
+Zeyrek, Morfessor, custom suffix heuristics, and corpus-derived phonological evidence can be combined into a unified morphology dataset.
 
-An optional Bloom Filter-based duplicate detection mechanism is included.
+SQLite provides disk-backed word indexing, reducing the need to load all intermediate records into memory.
 
-It can identify exact duplicate text entries.
+### Morphological Boundary Alignment
 
-A Bloom Filter is probabilistic: it does not independently identify near-duplicates or semantically similar documents.
+The project measures how BPE token boundaries overlap with Morfessor segmentation boundaries.
 
-### 4.6 Holdout sampling
+It reports:
 
-The pipeline supports keeping a separate holdout sample outside the BPE training stream.
+- Boundary precision.
+- Morfessor boundary recall.
+- F1 score.
+- Exact boundary match percentage.
 
-This makes it possible to evaluate tokenizer behavior on documents that were not used during training.
+These measurements describe segmentation agreement, not definitive linguistic correctness.
 
----
+## 5. Large-Scale Data Engineering
 
-## 5. Training Architecture and Technologies
+V13.2 defines three Hugging Face dataset sources:
 
-RuzgarTokenizer combines multiple technologies into a modular NLP development system.
+| Dataset | Repository | Configured weight |
+|---|---|---:|
+| FineWeb-2 Turkish | `HuggingFaceFW/fineweb-2` | 40% |
+| Turkish Corpus 100B | `hasankursun/turkish-corpus-100b` | 40% |
+| Umarigan Turkish Corpus | `umarigan/turkish_corpus` | 20% |
 
-| Technology | Project role |
-|---|---|
-| Hugging Face Hub | Dataset and model artifact management |
-| Hugging Face Tokenizers | Tokenizer implementation and training |
-| Rust / Rayon | Parallel CPU execution in the tokenizer engine |
-| ByteLevel BPE | Main tokenization algorithm |
-| PyArrow | Parquet reading and processing |
-| Zeyrek | Turkish morphological analysis |
-| Morfessor | Unsupervised morpheme learning |
-| Python | Pipeline orchestration and analysis |
-| SQLite | Morphology indexing and queries |
-| JSON / JSONL | Structured result storage |
-| Multiprocessing | Parallel analysis workers |
-| ThreadPoolExecutor | Parallel tasks and file operations |
-| psutil | CPU, RAM, and disk monitoring |
-| hashlib | File and data signatures |
-| Bloom Filter | Optional duplicate detection |
-| Marimo | Notebook-based execution environment |
+These are configured source weights, not a guarantee of the exact final corpus distribution.
 
-### 5.1 Rust-powered Tokenizers engine
+The data pipeline uses Hugging Face Hub APIs for repository discovery and downloading, and PyArrow for Parquet inspection and processing.
 
-Hugging Face Tokenizers is implemented in Rust.
+Its data engineering components include:
 
-This provides a native, optimized engine for tokenizer training and encoding operations.
+- Repository and file discovery.
+- Parquet metadata inspection.
+- Schema and text-column detection.
+- Language-label probing.
+- Batch-based reading.
+- Streaming document processing.
+- Configurable download concurrency.
+- Retry and recovery mechanisms.
+- Optional Bloom Filter exact-duplicate detection.
+- Reservoir sampling.
+- Holdout dataset support.
+- Dataset validation caching.
 
-Rayon is used for CPU parallelism in the tokenizer engine.
+The default configuration includes an 8,192-row Parquet batch size, eight download workers, and four download retries.
 
-### 5.2 CPU and GPU distinction
+## 6. Performance-Oriented Infrastructure
 
-The current V13.1 implementation has the following execution characteristics:
+RuzgarTokenizer is designed to monitor and manage long-running workloads.
 
-- ByteLevel BPE training runs on the CPU.
-- The tokenizer engine uses Rust/Rayon-based processing.
-- Zeyrek and Morfessor perform their respective analysis workloads.
-- GPU execution is not enabled in the current implementation.
+Its infrastructure includes:
 
-The presence of GPU hardware in the development environment should therefore be distinguished from actual GPU utilization during tokenizer training.
+- Rust/Rayon tokenizer execution.
+- ThreadPoolExecutor-based downloads.
+- Multiprocessing-oriented morphology analysis.
+- Process and memory monitoring with psutil.
+- cgroup memory-limit detection.
+- SQLite-backed intermediate indexing.
+- Atomic JSON and JSONL output.
+- Retry with exponential backoff.
+- Heartbeat monitoring.
+- Stage-level execution tracking.
+- Persistent intermediate results.
+- Configurable retraining and resampling.
 
----
+These mechanisms help make large corpus processing more observable, recoverable, and manageable.
 
-## 6. Training Data and Hardware
+## 7. Comparative Benchmark Results
 
-The reported training configuration:
+The supplied benchmark CSV records results from six tokenizers evaluated over the same text collection.
 
-| Specification | Value |
+### Evaluation Dataset
+
+| Metric | Value |
 |---|---:|
-| Total training data | **304.92 GB** |
-| Approximate duration | **1.5 days** |
-| Target vocabulary | **256,000** |
-| RAM capacity | **1 TB** |
-| Storage capacity | **10 TB** |
-| GPU hardware | NVIDIA RTX 6000 PRO Blackwell |
-| BPE algorithm | ByteLevel BPE |
-| Minimum token frequency | 2 |
+| Documents | 51,140 |
+| Failed documents | 0 |
+| Input size | 200 MiB |
+| UTF-8 bytes | 209,715,200 |
+| Characters | 192,131,260 |
+| Whitespace-separated words | 24,612,007 |
 
-These figures describe the project-reported development environment and training run. Actual runtime and hardware utilization should be verified against execution logs and generated reports.
+### Token Efficiency
 
-In particular, the current V13.1 implementation reports BPE training as CPU-based and records `gpu_used` as `false`.
+| Tokenizer | Vocabulary | Tokens | Tokens / byte | Tokens / 1,000 words |
+|---|---:|---:|---:|---:|
+| **Ruzgar-256K** | 256,000 | **35,741,100** | **0.1704** | **1,452.18** |
+| OpenAI o200k_base | 200,019 | 57,460,095 | 0.2740 | 2,334.64 |
+| Qwen 2.5 | 151,643 | 66,276,713 | 0.3160 | 2,692.86 |
+| OpenAI cl100k_base | 100,277 | 75,408,571 | 0.3596 | 3,063.89 |
+| DeepSeek V3 | 128,000 | 79,031,654 | 0.3769 | 3,211.10 |
+| NEDO 32K | 32,768 | 81,762,570 | 0.3899 | 3,322.06 |
 
----
+### Token Count Reduction
 
-## 7. The 12-Stage Development Pipeline
+| Comparison | Reduction |
+|---|---:|
+| Against NEDO 32K | **56.29%** |
+| Against DeepSeek V3 | **54.77%** |
+| Against OpenAI cl100k_base | **52.61%** |
+| Against Qwen 2.5 | **46.08%** |
+| Against OpenAI o200k_base | **37.80%** |
 
-RuzgarTokenizer is organized as a modular development system rather than a single training command.
+These percentages compare total token counts on the supplied benchmark dataset. They should not be interpreted as universal improvements across all languages or workloads.
 
-The overall workflow consists of:
+### Throughput
 
-1. Package installation and environment checks.
-2. Dataset source discovery.
-3. Dataset file downloads.
-4. Parquet validation.
-5. Document streaming and preparation.
-6. Data sampling and statistics collection.
-7. Word corpus construction.
-8. Zeyrek morphological analysis.
-9. Morfessor training and segmentation.
-10. Unified morphology analysis.
-11. ByteLevel BPE training and benchmarking.
-12. Result validation, README generation, and ZIP packaging.
+| Tokenizer | Documents/sec | MB/sec | Tokens/sec |
+|---|---:|---:|---:|
+| Ruzgar-256K | 667.13 | 2.61 | 466,251 |
+| NEDO 32K | 346.69 | 1.36 | 554,285 |
+| OpenAI o200k_base | 3,630.37 | 14.20 | 4,079,031 |
+| OpenAI cl100k_base | 2,910.57 | 11.38 | 4,291,790 |
+| Qwen 2.5 | 692.62 | 2.71 | 897,627 |
+| DeepSeek V3 | 706.62 | 2.76 | 1,092,013 |
 
-Each module can report its own execution status and runtime.
+The results distinguish token efficiency from encoding throughput. RuzgarTokenizer produces fewer tokens on this dataset, while the supplied CSV reports higher throughput for the OpenAI encodings.
 
-### 7.1 Resumable pipeline
+### Latency
 
-The pipeline includes signatures and caching mechanisms that allow valid outputs from completed stages to be reused.
+| Tokenizer | P50 | P95 | P99 |
+|---|---:|---:|---:|
+| Ruzgar-256K | 0.662 ms | 4.634 ms | 11.256 ms |
+| NEDO 32K | 1.266 ms | 9.160 ms | 22.525 ms |
+| OpenAI o200k_base | 0.120 ms | 0.768 ms | 1.780 ms |
+| OpenAI cl100k_base | 0.151 ms | 0.994 ms | 2.303 ms |
+| Qwen 2.5 | 0.653 ms | 4.447 ms | 10.422 ms |
+| DeepSeek V3 | 0.626 ms | 4.430 ms | 10.363 ms |
 
-When the inputs have not changed, unnecessary recomputation can be avoided.
+The supplied CSV does not include every hardware and software detail needed to establish a fully controlled cross-library benchmark. Results should therefore be interpreted as measurements from the recorded benchmark run.
 
-### 7.2 Atomic file operations
+## 8. Internal Validation
 
-Important output files are first written to temporary files and moved into their final locations only after successful completion.
+In addition to comparative benchmarking, V13.2 contains an internal benchmark and validation stage.
 
-This helps protect valid outputs from being overwritten by incomplete files.
-
-### 7.3 Logging and monitoring
-
-The system can monitor:
-
-- CPU utilization.
-- RAM usage.
-- Disk status.
-- Execution time.
-- Processed data volume.
-- Module status.
-- Error records.
-
-Heartbeat reporting is also available for long-running operations such as BPE and Morfessor training.
-
----
-
-## 8. Benchmark System
-
-RuzgarTokenizer can be evaluated using multiple metrics rather than vocabulary size alone.
-
-### Supported benchmark metrics
+It measures:
 
 - Total token count.
 - Tokens per word.
 - Characters per token.
 - Bytes per token.
 - Tokens per 1,000 characters.
-- Documents per second.
-- Tokens per second.
-- Batch throughput.
-- Single-thread throughput.
-- Round-trip accuracy.
-- Word fertility.
-- Morphological boundary alignment.
+- Batch encoding throughput.
+- Single-thread document throughput.
+- Round-trip reconstruction.
+- Tokenizer file size.
+- Training duration.
+- Training corpus statistics.
 
-### 8.1 Comparison approach
+Round-trip validation checks whether encoding and decoding preserve the original input text.
 
-NEDO Tokenizer and Morpheus were considered important design and comparison references during development.
+Word fertility analysis measures how efficiently individual word forms are represented.
 
-Additional benchmark comparisons include publicly available OpenAI encodings, Qwen, and DeepSeek tokenizers.
+## 9. Twelve-Stage Pipeline
 
-OpenAI public encodings should not be interpreted as the exact tokenizer of every ChatGPT model. Gemini and Claude production tokenizers should not be considered directly tested in this benchmark.
+| Stage | Component | Description |
+|---:|---|---|
+| 1 | Environment | Package installation and environment setup |
+| 2 | Discovery | Dataset repository and file discovery |
+| 3 | Download | Concurrent Parquet downloads |
+| 4 | Validation | Dataset schema and metadata validation |
+| 5 | Streaming | Document processing and filtering |
+| 6 | Statistics | Corpus and sampling statistics |
+| 7 | Word corpus | Morphology word corpus preparation |
+| 8 | Zeyrek | Turkish morphological analysis |
+| 9 | Morfessor | Unsupervised morpheme discovery |
+| 10 | Unified morphology | Morphology output integration |
+| 11 | Benchmark | Tokenization performance evaluation |
+| 12 | Packaging | Verified ZIP export |
 
----
+## 10. Technology Stack
 
-## 9. Benchmark Results
+| Technology | Purpose |
+|---|---|
+| Python | Pipeline orchestration |
+| Rust | Tokenizer execution engine |
+| Rayon | Parallel CPU execution |
+| Hugging Face Tokenizers | ByteLevel BPE |
+| Hugging Face Hub | Dataset discovery and downloads |
+| PyArrow | Parquet processing |
+| Zeyrek | Turkish morphology |
+| Morfessor | Unsupervised segmentation |
+| SQLite | Intermediate indexing |
+| psutil | Resource monitoring |
+| multiprocessing | Parallel processing |
+| ThreadPoolExecutor | Concurrent downloads |
+| JSON / JSONL | Structured outputs |
+| hashlib | Hashing |
+| zipfile | Artifact packaging |
+| Marimo | Notebook execution |
 
-The following results are from the supplied 200 MiB benchmark report.
+## 11. Packaging & Distribution
 
-| Rank | Tokenizer | Total tokens |
-|---:|---|---:|
-| 1 | **Ruzgar 256K** | **35,741,100** |
-| 2 | OpenAI o200k_base | 57,460,095 |
-| 3 | Qwen 2.5 | 66,276,713 |
-| 4 | OpenAI cl100k_base | 75,408,571 |
-| 5 | DeepSeek V3 | 79,031,654 |
-| 6 | NEDO 32K | 81,762,570 |
+The project includes an automated ZIP packaging stage.
 
-### 9.1 Comparison with NEDO
+The package can contain:
 
-| Measurement | Result |
-|---|---:|
-| NEDO token count | 81,762,570 |
-| Ruzgar token count | 35,741,100 |
-| Difference | 46,021,470 |
-| Reduction in token count | **56.29%** |
+- Tokenizer model files.
+- Morphology outputs.
+- Benchmark reports.
+- Logs.
+- README documentation.
 
-On the same benchmark text, Ruzgar generated 56.29% fewer tokens than NEDO.
+Raw Parquet datasets, temporary files, caches, and intermediate SQLite files are excluded from the distribution package.
 
-### 9.2 Comparison with other systems
+Large project artifacts can be distributed through ZIP archives and Hugging Face Hub.
 
-| Tokenizer | Fewer tokens generated by Ruzgar |
-|---|---:|
-| NEDO 32K | 56.29% |
-| OpenAI o200k_base | 37.80% |
-| Qwen 2.5 | 46.08% |
-| OpenAI cl100k_base | 52.61% |
-| DeepSeek V3 | 54.77% |
-
-### 9.3 Tokens per byte
-
-| Tokenizer | Tokens / Byte |
-|---|---:|
-| **Ruzgar 256K** | **0.1704** |
-| OpenAI o200k_base | 0.2740 |
-| Qwen 2.5 | 0.3160 |
-| OpenAI cl100k_base | 0.3596 |
-| DeepSeek V3 | 0.3769 |
-| NEDO 32K | 0.3899 |
-
-### 9.4 Tokens per 1,000 words
-
-| Tokenizer | Tokens / 1,000 words |
-|---|---:|
-| **Ruzgar 256K** | **1,452.18** |
-| OpenAI o200k_base | 2,334.64 |
-| Qwen 2.5 | 2,692.86 |
-| OpenAI cl100k_base | 3,063.89 |
-| DeepSeek V3 | 3,211.10 |
-| NEDO 32K | 3,322.06 |
-
-### 9.5 Tokenization throughput
-
-| Tokenizer | Tokens / second |
-|---|---:|
-| OpenAI cl100k_base | 4,291,790 |
-| OpenAI o200k_base | 4,079,031 |
-| DeepSeek V3 | 1,092,013 |
-| Qwen 2.5 | 897,627 |
-| NEDO 32K | 554,285 |
-| Ruzgar 256K | 466,251 |
-
-Ruzgar's primary advantage in this benchmark is lower token usage, not the highest raw processing speed.
-
-### 9.6 Latency
-
-| Tokenizer | P50 | P95 | P99 |
-|---|---:|---:|---:|
-| Ruzgar | 0.662 ms | 4.634 ms | 11.256 ms |
-| NEDO | 1.266 ms | 9.160 ms | 22.525 ms |
-| OpenAI o200k | 0.120 ms | 0.768 ms | 1.780 ms |
-| OpenAI cl100k | 0.151 ms | 0.994 ms | 2.303 ms |
-| Qwen 2.5 | 0.653 ms | 4.447 ms | 10.422 ms |
-| DeepSeek V3 | 0.626 ms | 4.430 ms | 10.363 ms |
-
-### 9.7 Benchmark interpretation
-
-These results apply to the benchmark text and tokenizer versions used in the supplied report.
-
-A lower token count alone does not establish better performance for every task. Round-trip accuracy, encoding speed, domain-specific efficiency, and morphological alignment should also be evaluated.
-
----
-
-## 10. Validation and Quality Assurance
-
-Several validation procedures can be performed after tokenizer training.
-
-### Round-trip validation
-
-Checks whether encoding and decoding preserve the original text.
-
-### Synthetic tests
-
-Tests Turkish characters, suffixes, apostrophes, special characters, and different text formats.
-
-### Holdout tests
-
-Evaluates the tokenizer on documents separated from the training stream.
-
-### Batch consistency
-
-Checks whether batch encoding produces results consistent with individual encoding.
-
-### Save/load validation
-
-Reloads the saved tokenizer and verifies that it produces consistent token IDs for the same inputs.
-
----
-
-## 11. Project Structure and Outputs
-
-The main project artifacts are organized approximately as follows:
-
-```text
-RUZGAR_V13/
-│
-├── datasets/
-│   ├── fineweb2/
-│   ├── turkish_corpus_100b/
-│   ├── umarigan/
-│   └── _cache/
-│
-├── models/
-│   └── ruzgar_256k/
-│       ├── tokenizer.json
-│       └── config.json
-│
-├── morphology/
-│   ├── morphology_word_corpus.tsv
-│   ├── zeyrek_analyses.jsonl
-│   ├── morfessor_model.bin
-│   ├── morfessor_segments.jsonl
-│   ├── unified_morphology.jsonl
-│   └── suffix_inventory.json
-│
-├── benchmarks/
-│   └── benchmark_results.json
-│
-├── logs/
-│   └── ruzgar_v13_1_*.log
-│
-├── export/
-│   └── RuzgarTokenizer.zip
-│
-├── results.json
-└── README.md
-```
-
-The exact files present depend on the completed stages and configuration of each run.
-
----
-
-## 12. GitHub and Hugging Face Distribution
-
-Because the tokenizer vocabulary and associated model assets can exceed standard GitHub file-upload limits, the large project files are distributed as a **ZIP archive on GitHub**.
-
-This makes the artifacts easier to download as a single package.
-
-### Hugging Face
-
-Tokenizer files:
-
+**Hugging Face Repository:**  
 https://huggingface.co/brun12/RuzgarTokenizer
 
-### GitHub
+## 12. Installation & Usage
 
-Source code, README, benchmark reports, and ZIP distribution package:
+Install the required packages:
 
-`RuzgarTokenizer`
+```bash
+pip install tokenizers huggingface_hub
+```
 
-Users should check release information and file integrity when downloading the archive.
-
----
-
-## 13. Usage
-
-Load the local tokenizer with Python:
+Load the tokenizer:
 
 ```python
+from huggingface_hub import hf_hub_download
 from tokenizers import Tokenizer
 
-tokenizer = Tokenizer.from_file(
-    "tokenizer.json"
+path = hf_hub_download(
+    repo_id="brun12/RuzgarTokenizer",
+    filename="models/ruzgar_256k/tokenizer.json"
 )
 
-text = "Efficiently representing the morphological structure of Turkish."
+tokenizer = Tokenizer.from_file(path)
+
+text = "RuzgarTokenizer is a Turkish-focused tokenizer."
 
 encoded = tokenizer.encode(text)
 
-print("Tokens:", encoded.tokens)
-print("Token IDs:", encoded.ids)
-print("Token count:", len(encoded.ids))
+print(encoded.ids)
+print(encoded.tokens)
+print(len(encoded.ids))
 
-decoded = tokenizer.decode(encoded.ids)
-
-print("Decoded:", decoded)
+print(tokenizer.decode(encoded.ids))
 ```
 
-### Inspect tokenizer information
+## 13. Future Research
 
-```python
-from tokenizers import Tokenizer
+Planned research directions include:
 
-tokenizer = Tokenizer.from_file("tokenizer.json")
+- Broader Turkish corpus evaluation.
+- More independent holdout benchmarks.
+- Expanded morphological alignment analysis.
+- Vocabulary-size experiments.
+- Additional pre-tokenization comparisons.
+- Improved benchmark reproducibility.
+- Encoding and decoding optimization.
+- More extensive word fertility studies.
 
-print("Vocabulary size:", tokenizer.get_vocab_size())
-print("Special tokens:", tokenizer.get_added_tokens_decoder())
-```
+## 14. Author
 
----
+**RuzgarTokenizer**  
+Created and developed by **Rüzgar Vatansever**.
 
-## 14. Future Development
-
-Potential future improvements include:
-
-- Larger Turkish benchmark datasets.
-- Domain-specific token-efficiency evaluations.
-- More extensive morphological evaluation.
-- Detailed BPE-to-morpheme boundary analysis.
-- Encoding and decoding performance optimization.
-- Memory and loading-time measurements.
-- Long-text performance testing.
-- Additional tokenizer comparisons.
-- Python package integration.
-- Expanded API and usage documentation.
+Repository: https://huggingface.co/brun12/RuzgarTokenizer
 
 ---
 
-## 15. Developer
-
-**Rüzgar Vatansever**
-
-RuzgarTokenizer is an independent project created to investigate more efficient tokenization for Turkish.
-
-Its focus is on Turkish linguistic structure, large-scale data processing, vocabulary design, and comparative tokenizer research.
-
-**Project:** RuzgarTokenizer  
-**Developer:** Rüzgar Vatansever  
-**Algorithm:** ByteLevel BPE  
-**Target vocabulary:** 256K  
-**Primary language:** Turkish  
-**Hugging Face:** https://huggingface.co/brun12/RuzgarTokenizer
-
----
-
-## Attribution
-
-If you use RuzgarTokenizer in research or software, attribution to **Rüzgar Vatansever** and a reference to the official repository are appreciated.
-
-Please consult the repository's license before redistribution or commercial integration.
+*Benchmark figures in this document are taken from the supplied CSV. Implementation details are based on the supplied V13.2 source code. Configured parameters, measured results, and research interpretations are intentionally distinguished.*
